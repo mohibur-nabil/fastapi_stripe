@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Stripe Payment</title>
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 40px;
+      }
+      #card-element {
+        border: 1px solid #ccc;
+        padding: 10px;
+        border-radius: 5px;
+      }
+      .amount-buttons {
+        margin-bottom: 20px;
+      }
+      button.amount-btn {
+        margin: 5px;
+        background-color: #6772e5;
+        color: white;
+        padding: 10px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      button.amount-btn:hover {
+        background-color: #5469d4;
+      }
+      button.pay-btn {
+        background-color: #28a745;
+        color: white;
+        padding: 10px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      button.pay-btn:hover {
+        background-color: #218838;
+      }
+      input[type="number"] {
+        padding: 8px;
+        font-size: 14px;
+        width: 100px;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Buy Search Credits</h2>
+
+    <div class="amount-buttons">
+      <button class="amount-btn" data-amount="1">$1 – 2 searches</button>
+      <button class="amount-btn" data-amount="2">$2 – 4 searches</button>
+      <button class="amount-btn" data-amount="5">$5 – 10 searches</button>
+      <button class="amount-btn" data-amount="10">$10 – 20 searches</button>
+    </div>
+
+    <div>
+      Or enter custom amount ($):
+      <input type="number" id="custom-amount" min="1" step="0.5" />
+      <button class="pay-btn" id="custom-pay-btn">Pay Custom Amount</button>
+    </div>
+
+    <br /><br />
+    <form id="payment-form">
+      <div
+        id="result-message"
+        style="margin-top: 20px; font-family: Arial, sans-serif"
+      ></div>
+      <label>Email:</label><br />
+      <input
+        type="email"
+        id="email"
+        required
+        placeholder="your@email.com"
+        style="padding: 8px; width: 300px"
+      />
+      <br /><br />
+      <div id="card-element"></div>
+      <br />
+      <button type="submit" class="pay-btn">Pay</button>
+    </form>
+
+    <script>
+      const stripe = Stripe(
+        "pk_test_51RqVPuGVfKwvdZOVY2MS3MtXk3qNGGw3TJZrV7oBl4vvg5vMyy06aGTjLa06QDfYSWcwLfHVC7dEXHrnlsUSvQvV001ucP0aER"
+      );
+      const elements = stripe.elements();
+      const cardElement = elements.create("card");
+      cardElement.mount("#card-element");
+
+      let selectedAmount = null; // in dollars
+      let selectedButton = null; // track which button was clicked
+
+      // Helper: trigger payment flow
+      async function pay(amountDollars) {
+        const amountCents = Math.round(amountDollars * 100);
+        const email = document.getElementById("email").value;
+
+        const { token, error } = await stripe.createToken(cardElement);
+        if (error) {
+          document.getElementById(
+            "result-message"
+          ).innerHTML = `<p style="color:red;">${error.message}</p>`;
+          return;
+        }
+
+        const response = await fetch("http://localhost:8000/process-payment/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount: amountCents,
+            currency: "usd",
+            token: token.id,
+            email: email,
+          }),
+        });
+
+        const data = await response.json();
+        console.log(data);
+
+        const resultDiv = document.getElementById("result-message");
+
+        if (data.status === "success") {
+          // Build a clean HTML message
+          let html = `
+      <div style="padding:15px; border:1px solid #28a745; border-radius:8px; background:#e6ffed;">
+        <h3 style="color:#28a745; margin-top:0;">Payment Successful!</h3>
+        <p><strong>Charge ID:</strong> ${data.charge_id}</p>
+        <p><strong>Credits Purchased:</strong> ${data.searches} searches</p>
+    `;
+
+          if (data.stripe_receipt_url) {
+            html += `<p><a href="${data.stripe_receipt_url}" target="_blank">View Stripe Receipt</a></p>`;
+          }
+
+          html += `</div>`;
+          resultDiv.innerHTML = html;
+        } else {
+          resultDiv.innerHTML = `<p style="color:red;">Payment failed: ${data.message}</p>`;
+        }
+      }
+
+      // Handle highlighting
+      function highlightButton(button) {
+        // Reset previous selected button
+        if (selectedButton) {
+          selectedButton.style.backgroundColor = "#6772e5";
+        }
+        // Highlight new one
+        selectedButton = button;
+        selectedButton.style.backgroundColor = "#ff9800"; // orange highlight
+      }
+
+      // Predefined amount buttons
+      document.querySelectorAll(".amount-btn").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          selectedAmount = parseFloat(btn.dataset.amount);
+          highlightButton(btn);
+
+          alert(
+            `Selected $${selectedAmount} (${
+              selectedAmount / 0.5
+            } searches). Now enter your card and click Pay.`
+          );
+        });
+      });
+
+      // Custom pay button
+      document
+        .getElementById("custom-pay-btn")
+        .addEventListener("click", () => {
+          const customValue = parseFloat(
+            document.getElementById("custom-amount").value
+          );
+          if (isNaN(customValue) || customValue <= 0) {
+            alert("Please enter a valid amount.");
+            return;
+          }
+          selectedAmount = customValue;
+
+          // Remove highlight from previous selection
+          if (selectedButton) {
+            selectedButton.style.backgroundColor = "#6772e5";
+            selectedButton = null;
+          }
+
+          alert(
+            `Selected $${selectedAmount} (${
+              selectedAmount / 0.5
+            } searches). Now enter your card and click Pay.`
+          );
+        });
+
+      // On form submit
+      document
+        .getElementById("payment-form")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          if (!selectedAmount) {
+            alert("Please select an amount or enter a custom amount first.");
+            return;
+          }
+          await pay(selectedAmount);
+        });
+    </script>
+  </body>
+</html>
