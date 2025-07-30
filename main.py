@@ -6,6 +6,7 @@ import dotenv
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from send_email import send_email
+
 # Load environment variables from .env file
 dotenv.load_dotenv()
 # Replace with your Stripe secret key
@@ -23,13 +24,12 @@ app.add_middleware(
 )
 
 
-
-
 class PaymentRequest(BaseModel):
     amount: int
     currency: str
     token: str
     email: str
+
 
 import os
 import dotenv
@@ -70,7 +70,6 @@ class PaymentRequest(BaseModel):
     email: str
 
 
-
 @app.post("/process-payment/")
 async def process_payment(request: PaymentRequest):
     try:
@@ -94,6 +93,7 @@ async def process_payment(request: PaymentRequest):
             f"Charge ID: {charge.id}\n"
             f"Amount Paid: ${request.amount / 100:.2f}\n"
             f"Credits Purchased: {searches} searches\n\n"
+            f"Your Official Receipt: {charge.receipt_url}\n\n"
             f"You can now use your searches in FaceSearch Telegram Bot.\n\n"
             f"Thank you for your support!"
         )
@@ -101,7 +101,7 @@ async def process_payment(request: PaymentRequest):
         # Send custom email
         send_email(request.email, subject, body)
 
-                # Determine if Stripe generated a receipt
+        # Determine if Stripe generated a receipt
         stripe_receipt_sent = (
             charge.receipt_email is not None and charge.receipt_url is not None
         )
