@@ -1,255 +1,154 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>FaceSearch Payment</title>
-  <script src="https://js.stripe.com/v3/"></script>
-  <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background-color: #f0f2f5;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-    }
+  <head>
+    <meta charset="UTF-8" />
+    <title>FaceSearch Payment</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://js.stripe.com/v3/"></script>
+  
+  </head>
+  <body>
+    <div class="card">
+      <h2>Buy FaceSearch Credits</h2>
 
-    .card {
-      background-color: #fff;
-      padding: 30px;
-      width: 100%;
-      max-width: 400px;
-      border-radius: 10px;
-      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-    }
+      <label for="email">Email Address</label>
+      <input type="email" id="email" required placeholder="your@email.com" />
 
-    h2 {
-      text-align: center;
-      color: #333;
-      margin-bottom: 20px;
-    }
+      <div class="amount-buttons">
+        <button class="amount-btn" data-amount="1">$1 (2 searches)</button>
+        <button class="amount-btn" data-amount="2">$2 (4 searches)</button>
+        <button class="amount-btn" data-amount="5">$5 (10 searches)</button>
+        <button class="amount-btn" data-amount="10">$10 (20 searches)</button>
+      </div>
 
-    label {
-      font-weight: 500;
-      display: block;
-      margin-bottom: 5px;
-    }
+      <label for="custom-amount">Or enter custom amount ($)</label>
+      <input
+        type="number"
+        id="custom-amount"
+        step="0.01"
+        placeholder="e.g., 3.5"
+      />
+      <button class="pay-btn" id="custom-pay-btn" style="margin-bottom: 20px">
+        Use Custom Amount
+      </button>
 
-    input[type="email"],
-    input[type="number"] {
-      width: 100%;
-      padding: 10px;
-      margin-bottom: 15px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-    }
+      <form id="payment-form">
+        <div id="card-element"></div>
+        <button class="pay-btn" type="submit" id="pay-button">Pay</button>
+      </form>
 
-    .amount-buttons {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 20px;
-    }
-
-    .amount-btn {
-      flex: 1;
-      padding: 10px;
-      background-color: #6772e5;
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: background-color 0.3s;
-      text-align: center;
-      font-weight: bold;
-    }
-
-    .amount-btn:hover {
-      background-color: #5469d4;
-    }
-
-    .selected {
-      background-color: #ff9800 !important;
-    }
-
-    #card-element {
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      margin-bottom: 20px;
-    }
-
-    .pay-btn {
-      width: 100%;
-      padding: 12px;
-      background-color: #28a745;
-      color: white;
-      font-weight: bold;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: background-color 0.3s;
-    }
-
-    .pay-btn:hover:enabled {
-      background-color: #218838;
-    }
-
-    .pay-btn:disabled {
-      background-color: #94d3a2;
-      cursor: not-allowed;
-    }
-
-    .spinner {
-      display: none;
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #3498db;
-      border-radius: 50%;
-      width: 30px;
-      height: 30px;
-      animation: spin 1s linear infinite;
-      margin: 15px auto;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    #result-message {
-      margin-top: 20px;
-    }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h2>Buy FaceSearch Credits</h2>
-
-    <label for="email">Email Address</label>
-    <input type="email" id="email" required placeholder="your@email.com">
-
-    <div class="amount-buttons">
-      <button class="amount-btn" data-amount="1">$1 (2 searches)</button>
-      <button class="amount-btn" data-amount="2">$2 (4 searches)</button>
-      <button class="amount-btn" data-amount="5">$5 (10 searches)</button>
-      <button class="amount-btn" data-amount="10">$10 (20 searches)</button>
+      <div id="spinner" class="spinner"></div>
+      <div id="result-message"></div>
     </div>
 
-    <label for="custom-amount">Or enter custom amount ($)</label>
-    <input type="number" id="custom-amount" step="0.01" placeholder="e.g., 3.5">
-    <button class="pay-btn" id="custom-pay-btn" style="margin-bottom: 20px;">Use Custom Amount</button>
+    <script>
+      const stripe = Stripe(
+        "pk_test_51RqVPuGVfKwvdZOVY2MS3MtXk3qNGGw3TJZrV7oBl4vvg5vMyy06aGTjLa06QDfYSWcwLfHVC7dEXHrnlsUSvQvV001ucP0aER"
+      ); // Replace with your Stripe publishable key
+      const elements = stripe.elements();
+      const cardElement = elements.create("card");
+      cardElement.mount("#card-element");
 
-    <form id="payment-form">
-      <div id="card-element"></div>
-      <button class="pay-btn" type="submit" id="pay-button">Pay</button>
-    </form>
+      let selectedAmount = null;
+      let selectedButton = null;
 
-    <div id="spinner" class="spinner"></div>
-    <div id="result-message"></div>
-  </div>
+      function highlightButton(button) {
+        if (selectedButton) selectedButton.classList.remove("selected");
+        selectedButton = button;
+        selectedButton.classList.add("selected");
+      }
 
-  <script>
-    const stripe = Stripe("pk_test_51RqVPuGVfKwvdZOVY2MS3MtXk3qNGGw3TJZrV7oBl4vvg5vMyy06aGTjLa06QDfYSWcwLfHVC7dEXHrnlsUSvQvV001ucP0aER"); // Replace with your Stripe publishable key
-    const elements = stripe.elements();
-    const cardElement = elements.create('card');
-    cardElement.mount('#card-element');
-
-    let selectedAmount = null;
-    let selectedButton = null;
-
-    function highlightButton(button) {
-      if (selectedButton) selectedButton.classList.remove("selected");
-      selectedButton = button;
-      selectedButton.classList.add("selected");
-    }
-
-    document.querySelectorAll(".amount-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        selectedAmount = parseFloat(btn.dataset.amount);
-        highlightButton(btn);
-        document.getElementById("custom-amount").value = "";
-        document.getElementById("result-message").innerHTML = "";
+      document.querySelectorAll(".amount-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          selectedAmount = parseFloat(btn.dataset.amount);
+          highlightButton(btn);
+          document.getElementById("custom-amount").value = "";
+          document.getElementById("result-message").innerHTML = "";
+        });
       });
-    });
 
-    document.getElementById("custom-pay-btn").addEventListener("click", () => {
-      const customValue = parseFloat(document.getElementById("custom-amount").value);
-      if (isNaN(customValue) || customValue <= 0) {
-        alert("Please enter a valid custom amount.");
-        return;
-      }
-      selectedAmount = customValue;
-      if (selectedButton) selectedButton.classList.remove("selected");
-      selectedButton = null;
-      document.getElementById("result-message").innerHTML = "";
-    });
-
-    document.getElementById("payment-form").addEventListener("submit", async e => {
-      e.preventDefault();
-      const payButton = document.getElementById("pay-button");
-      const spinner = document.getElementById("spinner");
-      const resultDiv = document.getElementById("result-message");
-
-      const email = document.getElementById("email").value;
-      if (!selectedAmount) {
-        alert("Please select or enter an amount.");
-        return;
-      }
-
-      // Show spinner and disable pay button
-      spinner.style.display = "block";
-      payButton.disabled = true;
-      resultDiv.innerHTML = "";
-
-      const { token, error } = await stripe.createToken(cardElement);
-      if (error) {
-        spinner.style.display = "none";
-        payButton.disabled = false;
-        resultDiv.innerHTML =
-          `<p style="color:red;">${error.message}</p>`;
-        return;
-      }
-
-      try {
-        const response = await fetch("http://localhost:8000/process-payment/", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            amount: Math.round(selectedAmount * 100),
-            currency: "usd",
-            token: token.id,
-            email: email
-          })
+      document
+        .getElementById("custom-pay-btn")
+        .addEventListener("click", () => {
+          const customValue = parseFloat(
+            document.getElementById("custom-amount").value
+          );
+          if (isNaN(customValue) || customValue <= 0) {
+            alert("Please enter a valid custom amount.");
+            return;
+          }
+          selectedAmount = customValue;
+          if (selectedButton) selectedButton.classList.remove("selected");
+          selectedButton = null;
+          document.getElementById("result-message").innerHTML = "";
         });
 
-        const data = await response.json();
+      document
+        .getElementById("payment-form")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const payButton = document.getElementById("pay-button");
+          const spinner = document.getElementById("spinner");
+          const resultDiv = document.getElementById("result-message");
 
-        if (data.status === "success") {
-          let html = `
+          const email = document.getElementById("email").value;
+          if (!selectedAmount) {
+            alert("Please select or enter an amount.");
+            return;
+          }
+
+          // Show spinner and disable pay button
+          spinner.style.display = "block";
+          payButton.disabled = true;
+          resultDiv.innerHTML = "";
+
+          const { token, error } = await stripe.createToken(cardElement);
+          if (error) {
+            spinner.style.display = "none";
+            payButton.disabled = false;
+            resultDiv.innerHTML = `<p style="color:red;">${error.message}</p>`;
+            return;
+          }
+
+          try {
+            const response = await fetch(
+              "http://localhost:8000/process-payment/",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  amount: Math.round(selectedAmount * 100),
+                  currency: "usd",
+                  token: token.id,
+                  email: email,
+                }),
+              }
+            );
+
+            const data = await response.json();
+
+            if (data.status === "success") {
+              let html = `
             <div style="padding:12px; border:1px solid #28a745; border-radius:6px; background:#e6ffed;">
               <h4 style="color:#28a745;">Payment Successful!</h4>
               <p><strong>Charge ID:</strong> ${data.charge_id}</p>
               <p><strong>Credits Purchased:</strong> ${data.searches} searches</p>
           `;
-          if (data.stripe_receipt_url) {
-            html += `<p><a href="${data.stripe_receipt_url}" target="_blank">View Stripe Receipt</a></p>`;
+              if (data.stripe_receipt_url) {
+                html += `<p><a href="${data.stripe_receipt_url}" target="_blank">View Stripe Receipt</a></p>`;
+              }
+              html += `</div>`;
+              resultDiv.innerHTML = html;
+            } else {
+              resultDiv.innerHTML = `<p style="color:red;">Payment failed: ${data.message}</p>`;
+            }
+          } catch (err) {
+            resultDiv.innerHTML = `<p style="color:red;">An error occurred: ${err.message}</p>`;
+          } finally {
+            spinner.style.display = "none";
+            payButton.disabled = false;
           }
-          html += `</div>`;
-          resultDiv.innerHTML = html;
-        } else {
-          resultDiv.innerHTML =
-            `<p style="color:red;">Payment failed: ${data.message}</p>`;
-        }
-
-      } catch (err) {
-        resultDiv.innerHTML =
-          `<p style="color:red;">An error occurred: ${err.message}</p>`;
-      } finally {
-        spinner.style.display = "none";
-        payButton.disabled = false;
-      }
-    });
-  </script>
-</body>
+        });
+    </script>
+  </body>
 </html>
